@@ -237,6 +237,7 @@ print_graph_entry_leaf(struct trace_seq *s,
 	unsigned long long duration, depth;
 	unsigned long long val;
 	unsigned long long retval;
+	unsigned long long offset;
 	bool fgraph_retval_supported = true;
 	const char *retfunc = NULL;
 	const char *func;
@@ -257,8 +258,10 @@ print_graph_entry_leaf(struct trace_seq *s,
 	}
 
 	/* In case this is a retaddr event */
-	if (!tep_get_field_val(s, event, "retaddr", record, &val, 0))
+	if (!tep_get_field_val(s, event, "retaddr", record, &val, 0)) {
 		retfunc = tep_find_function(pevent, val);
+		offset = val - tep_find_function_address(pevent, val);
+	}
 
 	duration = rettime - calltime;
 
@@ -290,7 +293,7 @@ print_graph_entry_leaf(struct trace_seq *s,
 		ret = trace_seq_printf(s, " (%lld)", depth);
 
 	if (retfunc)
-		ret = trace_seq_printf(s, " /* <-%s */", retfunc);
+		ret = trace_seq_printf(s, " /* <-%s+0x%x */", retfunc, (int)offset);
 
 	/* Return Value */
 	if (ret && fgraph_retval_supported && !fgraph_retval_skip->set) {
@@ -317,6 +320,7 @@ static int print_graph_nested(struct trace_seq *s,
 	struct tep_handle *pevent = event->tep;
 	unsigned long long depth;
 	unsigned long long val;
+	unsigned long long offset;
 	const char *retfunc = NULL;
 	const char *func;
 	int ret;
@@ -332,8 +336,10 @@ static int print_graph_nested(struct trace_seq *s,
 		return trace_seq_putc(s, '!');
 
 	/* In case this is a retaddr event */
-	if (!tep_get_field_val(s, event, "retaddr", record, &val, 0))
+	if (!tep_get_field_val(s, event, "retaddr", record, &val, 0)) {
 		retfunc = tep_find_function(pevent, val);
+		offset = val - tep_find_function_address(pevent, val);
+	}
 
 	/* Function */
 	for (i = 0; i < (int)(depth * TRACE_GRAPH_INDENT); i++)
@@ -344,17 +350,18 @@ static int print_graph_nested(struct trace_seq *s,
 
 	func = tep_find_function(pevent, val);
 
-
 	if (func) {
 		ret = trace_seq_printf(s, "%s(", func);
 		print_args(s, event, record, func);
 		if (retfunc)
-			ret = trace_seq_printf(s, ") /* <-%s */ {", retfunc);
+			ret = trace_seq_printf(s, ") /* <-%s+0x%x */ {", retfunc,
+					       (int)offset);
 		else
 			ret = trace_seq_puts(s, ") {");
 	} else {
 		if (retfunc)
-			ret = trace_seq_printf(s, "%llx() /* <-%s */ {", val, retfunc);
+			ret = trace_seq_printf(s, "%llx() /* <-%s+0x%x */ {", val,
+					       retfunc, (int)offset);
 		else
 			ret = trace_seq_puts(s, ") {");
 	}
