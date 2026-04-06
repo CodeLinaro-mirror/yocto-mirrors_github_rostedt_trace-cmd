@@ -170,7 +170,7 @@ static const char *time_format(struct tracecmd_input *handle, enum time_fmt tf)
 			else
 				return tf == TIME_FMT_NORMAL ? " %6.1000d:" : "%6.1000d";
 		} else
-			return tf == TIME_FMT_NORMAL ? "%12d:" : "%12d";
+			return tf == TIME_FMT_NORMAL ? " %12d:" : "%12d";
 	}
 }
 

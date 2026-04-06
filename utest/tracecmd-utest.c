@@ -445,6 +445,28 @@ static void test_trace_convert6(void)
 	CU_TEST(ret == 0);
 }
 
+static void test_trace_report_long_timestamp_separator(void)
+{
+	struct stat st;
+	int ret;
+
+	/* If the trace data is already created, just use it, otherwise make it again */
+	if (stat(TRACECMD_FILE, &st) < 0) {
+		ret = run_trace("record", TRACECMD_OUT, "-e", "sched", "sleep", "1", NULL);
+		CU_TEST(ret == 0);
+	}
+
+	ret = grep_match("\\[[0-9][0-9][0-9]\\] [^ ]*\\. [0-9]\\{12,\\}:",
+			 "report", TRACECMD_IN, "--raw-ts",
+			 "--ts-offset", "100000000000000", NULL);
+	CU_TEST(ret == 0);
+
+	ret = grep_match("\\[[0-9][0-9][0-9]\\] [^ ]*\\.[0-9]\\{12,\\}:",
+			 "report", TRACECMD_IN, "--raw-ts",
+			 "--ts-offset", "100000000000000", NULL);
+	CU_TEST(ret == 1);
+}
+
 struct callback_data {
 	long			counter;
 	struct trace_seq	seq;
@@ -798,6 +820,8 @@ void test_tracecmd_lib(void)
 		    test_trace_sqlhist_hist);
 	CU_add_test(suite, "Test convert from v7 to v6",
 		    test_trace_convert6);
+	CU_add_test(suite, "Keep separator before long timestamps",
+		    test_trace_report_long_timestamp_separator);
 	CU_add_test(suite, "Use libraries to read file",
 		    test_trace_library_read);
 	CU_add_test(suite, "Use libraries to read file incremental",
