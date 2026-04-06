@@ -871,7 +871,7 @@ void trace_show_data(struct tracecmd_input *handle, struct tep_record *record)
 			TEP_PRINT_CPU);
 
 	if (raw_format)
-		trace_seq_printf(&s, "-0x%x",
+		trace_seq_printf(&s, " -0x%x",
 				 tep_data_flags(pevent, record));
 	else
 		tep_print_event(pevent, &s, record,
