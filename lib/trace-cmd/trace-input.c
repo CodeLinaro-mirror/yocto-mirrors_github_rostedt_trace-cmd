@@ -5237,9 +5237,15 @@ void tracecmd_close(struct tracecmd_input *handle)
 	for (cpu = 0; cpu < handle->cpus; cpu++) {
 		/* The tracecmd_peek_data may have cached a record */
 		free_next(handle, cpu);
-		free_page(handle, cpu);
 		if (handle->cpu_data) {
 			cpu_data = &handle->cpu_data[cpu];
+			if (cpu_data->pages) {
+				for (i = 0; i < cpu_data->nr_pages; i++) {
+					if (cpu_data->pages[i])
+						__free_page(handle, cpu_data->pages[i]);
+				}
+			}
+			cpu_data->page = NULL;
 			if (cpu_data->kbuf) {
 				kbuffer_free(cpu_data->kbuf);
 				if (cpu_data->page_map)
@@ -5265,6 +5271,7 @@ void tracecmd_close(struct tracecmd_input *handle)
 			}
 			free(cpu_data->compress.chunks);
 			list_for_each_entry_safe(page_map, n, &cpu_data->page_maps, list) {
+				munmap(page_map->map, page_map->size);
 				list_del(&page_map->list);
 				free(page_map);
 			}
