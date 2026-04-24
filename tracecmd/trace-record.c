@@ -7512,6 +7512,10 @@ void trace_extract(int argc, char **argv)
 		instance->flags |= BUFFER_FL_KEEP;
 	}
 
+	/* Make sure top_instance.output_file exists */
+	if (!top_instance.output_file)
+		top_instance.output_file = strdup(ctx.output);
+
 	/* Extracting data records all events in the system. */
 	if (!ctx.record_all)
 		record_all_events();
