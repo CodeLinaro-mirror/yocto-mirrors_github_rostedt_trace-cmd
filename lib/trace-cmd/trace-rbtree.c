@@ -26,6 +26,11 @@ static bool is_left(struct trace_rbtree_node *node)
 	return node == node->parent->left;
 }
 
+static bool is_black(struct trace_rbtree_node *node)
+{
+	return !node || node->color == BLACK;
+}
+
 static struct trace_rbtree_node **get_parent_ptr(struct trace_rbtree *tree,
 						 struct trace_rbtree_node *node)
 {
@@ -261,12 +266,12 @@ static void tree_fixup(struct trace_rbtree *tree, struct trace_rbtree_node *node
 				rotate_left(tree, node->parent);
 				old_right = node->parent->right;
 			}
-			if (old_right->left->color == BLACK &&
-			    old_right->right->color == BLACK) {
+			if (is_black(old_right->left) &&
+			    is_black(old_right->right)) {
 				old_right->color = RED;
 				node = node->parent;
 			} else {
-				if (old_right->right->color == BLACK) {
+				if (is_black(old_right->right)) {
 					old_right->left->color = BLACK;
 					old_right->color = RED;
 					rotate_right(tree, old_right);
@@ -287,12 +292,12 @@ static void tree_fixup(struct trace_rbtree *tree, struct trace_rbtree_node *node
 				rotate_right(tree, node->parent);
 				old_left = node->parent->left;
 			}
-			if (old_left->right->color == BLACK &&
-			    old_left->left->color == BLACK) {
+			if (is_black(old_left->right) &&
+			    is_black(old_left->left)) {
 				old_left->color = RED;
 				node = node->parent;
 			} else {
-				if (old_left->left->color == BLACK) {
+				if (is_black(old_left->left)) {
 					old_left->right->color = BLACK;
 					old_left->color = RED;
 					rotate_left(tree, old_left);
@@ -312,6 +317,7 @@ static void tree_fixup(struct trace_rbtree *tree, struct trace_rbtree_node *node
 void trace_rbtree_delete(struct trace_rbtree *tree, struct trace_rbtree_node *node)
 {
 	struct trace_rbtree_node *x, *y;
+	struct trace_rbtree_node nil;
 	bool do_fixup = false;
 
 	if (!node->left && !node->right && !node->parent) {
@@ -329,8 +335,14 @@ void trace_rbtree_delete(struct trace_rbtree *tree, struct trace_rbtree_node *no
 	else
 		x = y->right;
 
-	if (x)
-		x->parent = y->parent;
+	if (!x) {
+		x = &nil;
+		x->color = BLACK;
+		x->left = NULL;
+		x->right = NULL;
+	}
+
+	x->parent = y->parent;
 
 	if (!y->parent) {
 		tree->node = x;
@@ -365,6 +377,12 @@ void trace_rbtree_delete(struct trace_rbtree *tree, struct trace_rbtree_node *no
 	if (do_fixup)
 		tree_fixup(tree, x);
 
+	if (x == &nil) {
+		if (is_left(x))
+			x->parent->left = NULL;
+		else
+			x->parent->right = NULL;
+	}
  out:
 	node->parent = node->left = node->right = NULL;
 	tree->nr_nodes--;
