@@ -119,10 +119,48 @@ static int check_node(struct trace_rbtree *tree, struct trace_rbtree_node *node)
 				goto fail;
 		}
 	}
+	if (node->color == RED) {
+		if (node->left && node->left->color == RED)
+			goto fail;
+		if (node->right && node->right->color == RED)
+			goto fail;
+	}
 	return 0;
 fail:
 	printf("FAILED ON NODE!");
-	breakpoint();
+	return -1;
+}
+
+static int check_tree_node(struct trace_rbtree *tree, struct trace_rbtree_node *node,
+			   int black)
+{
+	int this_black = black;
+	int left_black;
+	int right_black;
+
+	if (!node)
+		return 0;
+
+	this_black = node->color == BLACK;
+
+	if (check_node(tree, node) < 0)
+		goto fail;
+
+	if (node == node->left || node == node->right)
+		goto fail;
+
+	left_black = check_tree_node(tree, node->left, this_black);
+	right_black = check_tree_node(tree, node->right, this_black);
+
+	if (left_black < 0 || right_black < 0)
+		return -1;
+
+	if (left_black != right_black)
+		goto fail;
+
+	return this_black + left_black;
+fail:
+	printf("FAILED ON NODE!");
 	return -1;
 }
 
@@ -130,39 +168,7 @@ static void check_tree(struct trace_rbtree *tree)
 {
 	struct trace_rbtree_node *node = tree->node;
 
-	if (node) {
-		if (check_node(tree, node))
-			return;
-		while (node->left) {
-			node = node->left;
-			if (check_node(tree, node))
-				return;
-		}
-	}
-
-	while (node) {
-		if (check_node(tree, node))
-			return;
-		if (node->right) {
-			node = node->right;
-			if (check_node(tree, node))
-				return;
-			while (node->left) {
-				node = node->left;
-				if (check_node(tree, node))
-				    return;
-			}
-			continue;
-		}
-		while (node->parent) {
-			if (is_left(node))
-				break;
-			node = node->parent;
-			if (check_node(tree, node))
-				return;
-		}
-		node = node->parent;
-	}
+	check_tree_node(tree, node, 0);
 }
 #else
 static inline void check_tree(struct trace_rbtree *tree) { }
@@ -216,8 +222,8 @@ int __hidden tcmd_rbtree_insert(struct trace_rbtree *tree,
 			}
 		}
 	}
-	check_tree(tree);
 	tree->node->color = BLACK;
+	check_tree(tree);
 	tree->nr_nodes++;
 	return 0;
 }
