@@ -6439,6 +6439,15 @@ bool trace_tsc2nsec_is_supported(void)
 	return get_tsc_nsec(NULL, NULL) == 0;
 }
 
+static bool is_function(const char *tracer)
+{
+	if (!tracer)
+		return false;
+
+	return strcmp(tracer, "function") == 0 ||
+		strcmp(tracer, "function_graph");
+}
+
 static void parse_record_options(int argc,
 				 char **argv,
 				 enum trace_cmd curr_cmd,
@@ -6550,8 +6559,14 @@ static void parse_record_options(int argc,
 				list_event(optarg);
 			break;
 		case 'f':
-			if (!last_event)
-				die("filter must come after event");
+			if (!last_event) {
+				const char *s = "";
+
+				if (is_function(ctx->instance->plugin))
+					s = "\n  Did you mean to filter functions? Then use: -l <filter>";
+				die("filter must come after event%s", s);
+			}
+
 			if (last_event->filter) {
 				last_event->filter =
 					realloc(last_event->filter,
